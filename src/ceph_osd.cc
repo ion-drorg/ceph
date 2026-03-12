@@ -140,6 +140,8 @@ int main(int argc, const char **argv)
     CODE_ENVIRONMENT_DAEMON, 0);
   ceph_heap_profiler_init();
 
+  dout(0) << "hello from dror" << dendl;
+
   Preforker forker;
 
   // osd specific args

@@ -360,6 +360,8 @@ bool MgrStatMonitor::preprocess_query(MonOpRequestRef op)
   case CEPH_MSG_STATFS:
     return preprocess_statfs(op);
   case MSG_MON_MGR_REPORT:
+    //dout(0) << "dror1: MON TRACE: Processing OSD stats report from Manager: *(op->get_req()) = " << *(op->get_req()) << dendl;
+    //ClibBackTrace(1).print(*_dout);
     return preprocess_report(op);
   case MSG_GETPOOLSTATS:
     return preprocess_getpoolstats(op);

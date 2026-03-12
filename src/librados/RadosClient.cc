@@ -864,6 +864,7 @@ int librados::RadosClient::mgr_command(vector<string>&& cmd,
 				       bufferlist &&inbl,
 				       bufferlist *outbl, string *outs)
 {
+  ldout(cct, 0) << "dror1: in mgr_command" << dendl;
   std::lock_guard l(lock);
 
   C_SaferCond cond;
@@ -888,6 +889,7 @@ int librados::RadosClient::mgr_command(
   bufferlist &&inbl,
   bufferlist *outbl, string *outs)
 {
+  ldout(cct, 0) << "dror1: in mgr_command2" << dendl;
   std::lock_guard l(lock);
 
   C_SaferCond cond;
@@ -911,6 +913,7 @@ int librados::RadosClient::mon_command(int rank, vector<string>&& cmd,
 				       bufferlist &&inbl,
 				       bufferlist *outbl, string *outs)
 {
+  ldout(cct, 0) << "dror1: in mon_command" << dendl;
   bs::error_code ec;
   auto&& [s, bl] = monclient.start_mon_command(rank, std::move(cmd), std::move(inbl),
 					       ca::use_blocked[ec]);
@@ -926,6 +929,7 @@ int librados::RadosClient::mon_command(std::string&& name, vector<string>&& cmd,
 				       bufferlist &&inbl,
 				       bufferlist *outbl, string *outs)
 {
+  ldout(cct, 0) << "dror1: in mon_command2" << dendl;
   bs::error_code ec;
   auto&& [s, bl] = monclient.start_mon_command(std::move(name), std::move(cmd), std::move(inbl),
 					       ca::use_blocked[ec]);
@@ -941,6 +945,7 @@ int librados::RadosClient::osd_command(int osd, vector<string>&& cmd,
 				       bufferlist&& inbl,
 				       bufferlist *poutbl, string *prs)
 {
+  ldout(cct, 0) << "dror1: in osd_command" << dendl;
   ceph_tid_t tid;
 
   if (osd < 0)
@@ -962,6 +967,7 @@ int librados::RadosClient::pg_command(pg_t pgid, vector<string>&& cmd,
 				      bufferlist&& inbl,
 				      bufferlist *poutbl, string *prs)
 {
+  ldout(cct, 0) << "dror1: in pg_command" << dendl;
   ceph_tid_t tid;
   bs::error_code ec;
   auto [s, bl] = objecter->pg_command(pgid, std::move(cmd), std::move(inbl), &tid,

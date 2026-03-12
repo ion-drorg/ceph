@@ -977,6 +977,8 @@ public:
 
 bool DaemonServer::handle_command(const ref_t<MCommand>& m)
 {
+  ldout(cct, 0) << "dror1: TRACE: MGR handling CLI command: " << m->cmd << dendl;
+  //ClibBackTrace(1).print(*_ldout);
   std::lock_guard l(lock);
   auto cmdctx = std::make_shared<CommandContext>(m);
   try {
@@ -989,6 +991,7 @@ bool DaemonServer::handle_command(const ref_t<MCommand>& m)
 
 bool DaemonServer::handle_command(const ref_t<MMgrCommand>& m)
 {
+  ldout(cct, 0) << "dror1: TRACE2: MGR handling CLI command: " << m->cmd << dendl;
   std::lock_guard l(lock);
   auto cmdctx = std::make_shared<CommandContext>(m);
   try {
@@ -2004,6 +2007,9 @@ bool DaemonServer::_handle_command(
       return true;
     }
   } else if (prefix == "osd df") {
+    ldout(g_ceph_context, 0) << "dror1: MGR handling 'osd df' command trace" << dendl;
+    //ClibBackTrace(1).print(*_ldout);
+
     string method, filter;
     cmd_getval(cmdctx->cmdmap, "output_method", method);
     cmd_getval(cmdctx->cmdmap, "filter", filter);
