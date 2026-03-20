@@ -2020,6 +2020,9 @@ public:
 private:
   DynamicPerfStats m_dynamic_perf_stats;
 
+  size_t m_laggy_state_op_count = 0;
+  bool m_disable_hook = false;
+
 };
 
 inline ostream& operator<<(ostream& out, const PrimaryLogPG::RepGather& repop)
