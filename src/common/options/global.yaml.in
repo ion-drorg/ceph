@@ -6936,3 +6936,21 @@ options:
   flags:
   - no_mon_update
   - startup
+- name: osd_reproduce_bug_75403_hook
+  type: bool
+  level: dev
+  desc: Hook for reproducing bug 75403
+  default: false
+  services:
+  - osd
+  flags:
+  - runtime
+- name: osd_bug_75403_after_fix
+  type: bool
+  level: dev
+  desc: Simulates code flow of the fix
+  default: false
+  services:
+  - osd
+  flags:
+  - runtime

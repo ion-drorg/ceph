@@ -1911,6 +1911,7 @@ public:
 
   bool check_laggy(OpRequestRef& op);
   bool check_laggy_requeue(OpRequestRef& op);
+  void requeue_ops(std::list<OpRequestRef>& l) override;
   void recheck_readable() override;
 
   bool is_backfill_target(pg_shard_t osd) const {
@@ -2019,6 +2020,9 @@ public:
 
 private:
   DynamicPerfStats m_dynamic_perf_stats;
+
+  size_t m_set_laggy_op_count = 0;
+  bool m_disable_hook = false;
 
 };
 

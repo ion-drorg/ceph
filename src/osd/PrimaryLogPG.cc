@@ -72,6 +72,8 @@
 
 #ifdef WITH_LTTNG
 #include "tracing/osd.h"
+#include "common/BackTrace.h"
+
 #else
 #define tracepoint(...)
 #endif
@@ -855,18 +857,30 @@ bool PrimaryLogPG::check_laggy(OpRequestRef& op)
 {
   ceph_assert(HAVE_FEATURE(recovery_state.get_min_upacting_features(),
 		      SERVER_OCTOPUS));
+
+  const MOSDOp *m = static_cast<const MOSDOp*>(op->get_req());
+  ceph_assert(m->get_type() == CEPH_MSG_OSD_OP);
+
+  auto it = waiting_for_unreadable_object.find(m->get_hobj());
+  size_t unreadable_count = (it != waiting_for_unreadable_object.end()) ? it->second.size() : 0;
+  bool trigger_laggy = !m_disable_hook && m->get_oid().name == "my_test_obj" && unreadable_count == 2;
+
+  dout(10) << __func__ << " trigger_laggy = " << trigger_laggy << ", m->get_oid().name = " << m->get_oid().name << ", op->may_write() = " << op->may_write() << ", op->may_read() = " << op->may_read()
+  << ", unreadable_cout = " << unreadable_count << ", m_set_laggy_op_count = " << m_set_laggy_op_count << ", m_disable_hook = " << m_disable_hook << dendl;
+
   if (state_test(PG_STATE_WAIT)) {
     dout(10) << __func__ << " PG is WAIT state" << dendl;
   } else if (!state_test(PG_STATE_LAGGY)) {
     auto mnow = osd->get_mnow();
     auto ru = recovery_state.get_readable_until();
-    if (mnow <= ru) {
+    if (mnow <= ru && !trigger_laggy) {
       // not laggy
       return true;
     }
     dout(10) << __func__
-	     << " mnow " << mnow
-	     << " > readable_until " << ru << dendl;
+             << " mnow " << mnow
+             << " > readable_until " << ru << ", "
+             << "trigger_laggy = " << trigger_laggy << ", " << m->get_oid().name << ", is_primary() = " << is_primary() << dendl;
 
     if (!is_primary()) {
       osd->reply_op_error(op, -EAGAIN);
@@ -880,6 +894,28 @@ bool PrimaryLogPG::check_laggy(OpRequestRef& op)
   dout(10) << __func__ << " not readable" << dendl;
   waiting_for_readable.push_back(op);
   op->mark_delayed("waiting for readable");
+
+  if (trigger_laggy) {
+    dout(10) << __func__ << " trigger_laggy kicking back " << unreadable_count << " ops from unreadable list" << dendl;
+    if (g_conf().get_val<bool>("osd_bug_75403_after_fix")) {
+      requeue_ops(waiting_for_unreadable_object[m->get_hobj()]);
+      m_disable_hook = true;
+      recheck_readable();
+    } else {
+      PG::requeue_ops(waiting_for_unreadable_object[m->get_hobj()]);
+    }
+    m_set_laggy_op_count = unreadable_count;
+  } else if (m->get_oid().name == "my_test_obj") {
+      m_set_laggy_op_count--;
+      dout(10) << __func__ << " trigger_laggy read hook: m_set_laggy_op_count = " << m_set_laggy_op_count << dendl;
+      if (m_set_laggy_op_count == 0) {
+          state_clear(PG_STATE_LAGGY);
+          m_disable_hook = true;
+          dout(10) << __func__ << " trigger_laggy kicking back all waiting_for_readable ops" << dendl;
+          requeue_ops(waiting_for_readable);
+      }
+  }
+
   return false;
 }
 
@@ -894,6 +930,21 @@ bool PrimaryLogPG::check_laggy_requeue(OpRequestRef& op)
   waiting_for_readable.push_front(op);
   op->mark_delayed("waiting for readable");
   return false;
+}
+
+void PrimaryLogPG::requeue_ops(std::list<OpRequestRef>& l)
+{
+  ceph_assert(HAVE_FEATURE(recovery_state.get_min_upacting_features(),
+                      SERVER_OCTOPUS));
+  if ((!state_test(PG_STATE_WAIT) && !state_test(PG_STATE_LAGGY)) || &l == &waiting_for_readable) {
+    PG::requeue_ops(l);
+    return;
+  }
+  dout(20) << __func__ << " not readable ops (count=" << l.size() << ")" << dendl;
+  for (auto& op : l) {
+    op->mark_delayed("waiting for readable");
+  }
+  waiting_for_readable.splice(waiting_for_readable.begin(), l);
 }
 
 void PrimaryLogPG::recheck_readable()
@@ -1759,18 +1810,8 @@ void PrimaryLogPG::release_object_locks(
         for (auto& op : p.second) {
           op->mark_delayed("waiting for scrub");
         }
-
 	waiting_for_scrub.splice(
 	  waiting_for_scrub.begin(),
-	  p.second,
-	  p.second.begin(),
-	  p.second.end());
-      } else if (is_laggy()) {
-        for (auto& op : p.second) {
-          op->mark_delayed("waiting for readable");
-        }
-	waiting_for_readable.splice(
-	  waiting_for_readable.begin(),
 	  p.second,
 	  p.second.begin(),
 	  p.second.end());
@@ -2011,7 +2052,11 @@ void PrimaryLogPG::do_op(OpRequestRef& op)
     m->clear_payload();
   }
 
-  dout(20) << __func__ << ": op " << *m << dendl;
+  dout(20) << __func__ << ": do_op entry: " << *m << dendl;
+
+  if (m->get_oid().name == "my_test_obj") {
+    dout(0) << __func__ << " do_op backtrace:\n" << ClibBackTrace(1) << dendl;
+  }
 
   const hobject_t head = m->get_hobj().get_head();
 
@@ -2210,14 +2255,25 @@ void PrimaryLogPG::do_op(OpRequestRef& op)
     }
   }
 
-  dout(10) << "do_op " << *m
-	   << (op->may_write() ? " may_write" : "")
-	   << (op->may_read() ? " may_read" : "")
-	   << (op->may_cache() ? " may_cache" : "")
-	   << " -> " << (write_ordered ? "write-ordered" : "read-ordered")
-	   << " flags " << ceph_osd_flag_string(m->get_flags())
-	   << dendl;
+  dout(10) << "do_op before hook check: m->get_oid().name = " << m->get_oid().name << ", message: " << *m << " end of message"
+	   << ", may_write=" << (op->may_write() ? "true" : "false")
+	   << ", may_read=" << (op->may_read() ? "true" : "false")
+	   << ", may_cache=" << (op->may_cache() ? "true" : "false")
+	   << ", " << (write_ordered ? "write-ordered" : "read-ordered")
+	   << ", flags " << ceph_osd_flag_string(m->get_flags()) << " end of flags"
+           << ", osd_reproduce_bug_75403_hook=" << (g_conf().get_val<bool>("osd_reproduce_bug_75403_hook")? "true" : "false")
+           << dendl;
 
+  if (!m_disable_hook && g_conf().get_val<bool>("osd_reproduce_bug_75403_hook") && m->get_oid().name == "my_test_obj") {
+    m_set_laggy_op_count++;
+    dout(0) << __func__  << " Hook for bug 75429: sending read op for " <<  m->get_hobj().get_head()
+            << " to waiting_for_unreadable_object list" << dendl;
+    // directly update the unreadable list to avoid checks that will fail:
+    waiting_for_unreadable_object[m->get_hobj()].push_back(op);
+    op->mark_delayed("waiting for missing object");
+    osd->logger->inc(l_osd_op_delayed_unreadable);
+    return;
+  }
 
   // missing object?
   if (is_unreadable_object(head)) {
@@ -4351,6 +4407,11 @@ void PrimaryLogPG::execute_ctx(OpContext *ctx)
 
   // trim log?
   recovery_state.update_trim_to();
+
+  dout(20) << __func__ << " before out of order op check: cct->_conf->osd_debug_op_order  = " << cct->_conf->osd_debug_op_order
+           << ", m->get_source().is_client() " << m->get_source().is_client()
+           << ", pool.info.is_tier() " << pool.info.is_tier()
+           << ", pool.info.has_tiers() " << pool.info.has_tiers() << dendl;
 
   // verify that we are doing this in order?
   if (cct->_conf->osd_debug_op_order && m->get_source().is_client() &&
