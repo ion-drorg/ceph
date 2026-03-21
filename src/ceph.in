@@ -953,6 +953,11 @@ def wait(childargs: Sequence[str], waitdata):
 
 
 def main():
+    print('dror: ./bin/ceph is a python script generated from src/ceph.in by cmake with its configure_file command.', file=sys.stderr)
+    print('dror: cmake\'s configure_file replaces @VAR@ variables according to the defined value is CMakeLists.txt, e.g. set(CEPH_VERSION "18.2.0").', file=sys.stderr)
+    print('dror: This script, ./bin/ceph, imports rados Python Cython packages which maps to librados API.', file=sys.stderr)
+    print('dror: librados contain various ceph client core functionalities and is also use on the server side: Crush Alg, Prepare OSDOp, Session Management, Messager (network protocol), Auth etc.', file=sys.stderr)
+
     ceph_args = os.environ.get('CEPH_ARGS')
     if ceph_args:
         if "injectargs" in sys.argv:

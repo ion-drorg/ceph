@@ -433,7 +433,12 @@ void ProtocolV2::prepare_send_message(uint64_t features,
 
 void ProtocolV2::send_message(Message *m) {
   uint64_t f = connection->get_features();
-
+  // Inside send_message...
+  JSONFormatter jsonFormatter(true);
+  m->dump(&jsonFormatter);
+  std::cerr << "dror: Send Message: " << m->get_type() << ": ";
+  jsonFormatter.flush(std::cerr);
+  std::cerr << std::endl;
   // TODO: Currently not all messages supports reencode like MOSDMap, so here
   // only let fast dispatch support messages prepare message
   const bool can_fast_prepare = messenger->ms_can_fast_dispatch(m);
@@ -1449,6 +1454,37 @@ CtPtr ProtocolV2::handle_message() {
   }
 
   INTERCEPT(17);
+
+  JSONFormatter jsonFormatter(true);
+  message->dump(&jsonFormatter);
+  std::cerr << "dror: Received Message: " << message->get_type() << ": ";
+  jsonFormatter.flush(std::cerr);
+  std::cerr << std::endl;
+
+  // 1. Dump the basic fields (Return code, etc.)
+  JSONFormatter jf(true);
+  message->dump(&jf);
+  std::cerr << "dror: Reply Metadata: " << message->get_type() << ": " << std::endl;
+  jf.flush(std::cerr);
+  std::cerr << std::endl;
+
+  // 2. Print the actual payload (The table data)
+  // The "front" often holds the error message (outs)
+  if (message->get_payload().length() > 0) {
+    std::cerr << "dror: Reply Front (outs): " << message->get_payload().to_str() << std::endl;
+  }
+
+  // The "data" section holds the main output (outbb)
+  if (message->get_data().length() > 0) {
+    std::cerr << "dror: Reply Data (outbb): " << std::endl;
+    // This will print the actual 'osd df' table to your terminal
+    std::cerr << "dror: Reply Data in Hex: " << std::endl;
+    message->get_data().hexdump(std::cerr);
+    // OR use .to_str() if you know it is plain text
+    std::cerr << "dror: Reply Data as String: " << std::endl;
+    std::cerr << message->get_data().to_str() << std::endl;
+    std::cerr << "dror: End of Reply Data" << std::endl;
+  }
 
   message->set_byte_throttler(connection->policy.throttler_bytes);
   message->set_message_throttler(connection->policy.throttler_messages);

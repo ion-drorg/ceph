@@ -977,7 +977,7 @@ public:
 
 bool DaemonServer::handle_command(const ref_t<MCommand>& m)
 {
-  ldout(cct, 0) << "dror1: TRACE: MGR handling CLI command: " << m->cmd << dendl;
+  ldout(cct, 0) << "dror: TRACE: MGR handling CLI command: " << m->cmd << dendl;
   //ClibBackTrace(1).print(*_ldout);
   std::lock_guard l(lock);
   auto cmdctx = std::make_shared<CommandContext>(m);
@@ -991,7 +991,7 @@ bool DaemonServer::handle_command(const ref_t<MCommand>& m)
 
 bool DaemonServer::handle_command(const ref_t<MMgrCommand>& m)
 {
-  ldout(cct, 0) << "dror1: TRACE2: MGR handling CLI command: " << m->cmd << dendl;
+  ldout(cct, 0) << "dror: TRACE2: MGR handling CLI command: " << m->cmd << dendl;
   std::lock_guard l(lock);
   auto cmdctx = std::make_shared<CommandContext>(m);
   try {
@@ -2007,7 +2007,7 @@ bool DaemonServer::_handle_command(
       return true;
     }
   } else if (prefix == "osd df") {
-    ldout(g_ceph_context, 0) << "dror1: MGR handling 'osd df' command trace" << dendl;
+    ldout(g_ceph_context, 0) << "dror: MGR handling 'osd df' command trace" << dendl;
     //ClibBackTrace(1).print(*_ldout);
 
     string method, filter;
@@ -2023,8 +2023,10 @@ bool DaemonServer::_handle_command(
           rs << "'" << filter << "' not a pool, crush node or device class name";
           return -EINVAL;
         }
+      ldout(g_ceph_context, 0) << "dror: Calling print_osd_utilization." << dendl;
 	print_osd_utilization(osdmap, pgmap, ss,
                               f.get(), method == "tree", filter);
+      ldout(g_ceph_context, 0) << "dror: MGR Server Fetched Data (Content about to be sent):" << ss.str() << dendl;
 	cmdctx->odata.append(ss);
 	return 0;
       });

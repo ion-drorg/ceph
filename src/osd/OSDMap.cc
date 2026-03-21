@@ -7220,6 +7220,7 @@ public:
     Parent(crush, osdmap, pgmap, tree, filter) {}
 
   void dump(TextTable *tbl) {
+    ldout(g_ceph_context, 0) << "dror: In OSDUtilizationPlainDumper::dump." << dendl;
     tbl->define_column("ID", TextTable::LEFT, TextTable::RIGHT);
     tbl->define_column("CLASS", TextTable::LEFT, TextTable::RIGHT);
     tbl->define_column("WEIGHT", TextTable::LEFT, TextTable::RIGHT);
@@ -7239,7 +7240,11 @@ public:
 
     Parent::dump(tbl);
 
+    ldout(g_ceph_context, 0) << "dror: In OSDUtilizationPlainDumper::dump: after Parent::dump" << *tbl << dendl;
+
     dump_stray(tbl);
+
+    ldout(g_ceph_context, 0) << "dror: In OSDUtilizationPlainDumper::dump: after dump_stray: " << *tbl << dendl;
 
     auto sum = pgmap.get_osd_sum(get_dumped_osds());
     *tbl << ""
@@ -7433,6 +7438,7 @@ void print_osd_utilization(const OSDMap& osdmap,
 {
   const CrushWrapper *crush = osdmap.crush.get();
   if (f) {
+    ldout(g_ceph_context, 0) << "dror: In print_osd_utilization getting formatted output." << dendl;
     f->open_object_section("df");
     OSDUtilizationFormatDumper d(crush, &osdmap, pgmap, tree, filter);
     d.dump(f);
@@ -7440,6 +7446,7 @@ void print_osd_utilization(const OSDMap& osdmap,
     f->close_section();
     f->flush(out);
   } else {
+    ldout(g_ceph_context, 0) << "dror: In print_osd_utilization getting plain output." << dendl;
     OSDUtilizationPlainDumper d(crush, &osdmap, pgmap, tree, filter);
     TextTable tbl;
     d.dump(&tbl);

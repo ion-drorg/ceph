@@ -2114,6 +2114,7 @@ void PGMap::print_osd_perf_stats(std::ostream *ss) const
   for (auto i = osd_stat.begin();
        i != osd_stat.end();
        ++i) {
+    ldout(g_ceph_context, 0) << "dror: In PGMap::print_osd_perf_stats: " << i->first << dendl;
     tab << i->first;
     tab << i->second.os_perf_stat.os_commit_latency_ns / 1000000ull;
     tab << i->second.os_perf_stat.os_apply_latency_ns / 1000000ull;
@@ -3775,11 +3776,13 @@ int process_pg_map_command(
 
   if (prefix == "osd perf") {
     if (f) {
+      ldout(g_ceph_context, 0) << "dror: In process_pg_map_command getting formatted osd perf." << dendl;
       f->open_object_section("osdstats");
       pg_map.dump_osd_perf_stats(f);
       f->close_section();
       f->flush(ds);
     } else {
+      ldout(g_ceph_context, 0) << "dror: In process_pg_map_command getting plain osd perf." << dendl;
       pg_map.print_osd_perf_stats(&ds);
     }
     odata->append(ds);

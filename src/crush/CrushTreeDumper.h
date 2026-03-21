@@ -26,6 +26,10 @@
 #include <map>
 #include <string>
 
+#include "common/debug.h"
+#define dout_subsys ceph_subsys_crush
+#define dout_context g_ceph_context
+
 /**
  * CrushTreeDumper:
  * A helper class and functions to dump a crush tree.
@@ -119,7 +123,9 @@ namespace CrushTreeDumper {
     }
 
     bool next(Item &qi) {
+      dout(0) << "dror: in CrushTreeDumper::next: starting" << dendl;
       if (empty()) {
+        dout(0) << "dror: in CrushTreeDumper::next: it's empty" << dendl;
 	while (root != roots.end() && !should_dump(*root))
 	  ++root;
 	if (root == roots.end())
@@ -135,6 +141,7 @@ namespace CrushTreeDumper {
       if (qi.is_bucket()) {
 	// queue bucket contents, sorted by (class, name)
 	int s = crush->get_bucket_size(qi.id);
+        dout(0) << "dror: in CrushTreeDumper::next: qi.id = " << qi.id << ", s = " << s << dendl;
 	std::map<std::string, std::pair<int,float>> sorted;
 	for (int k = s - 1; k >= 0; k--) {
 	  int id = crush->get_bucket_item(qi.id, k);
@@ -151,6 +158,7 @@ namespace CrushTreeDumper {
 	      sort_by = "_";
 	      sort_by += crush->get_item_name(id);
 	    }
+	    dout(0) << "dror: in CrushTreeDumper::next: adding to sorted list: id = " << id << ", sort_by = " << sort_by << dendl;
 	    sorted[sort_by] = std::make_pair(
 	      id, crush->get_bucket_item_weightf(qi.id, k));
 	  }
@@ -167,8 +175,10 @@ namespace CrushTreeDumper {
     void dump(F *f) {
       reset();
       Item qi;
-      while (next(qi))
-	dump_item(qi, f);
+      while (next(qi)) {
+        dout(0) << "dror: in CrushTreeDumper::dump next returned: qi.id = " << qi.id <<  dendl;
+        dump_item(qi, f);
+      }
     }
 
     bool is_touched(int id) const { return touched.count(id) > 0; }

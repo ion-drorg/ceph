@@ -309,7 +309,7 @@ bool DaemonStateIndex::exists(const DaemonKey &key) const
 
 DaemonStatePtr DaemonStateIndex::get(const DaemonKey &key)
 {
-//  ldout(g_ceph_context, 0) << "dror1: DROR_MGR: DaemonStateIndex::get fetching " << key.type << "." << key.name << dendl;
+//  ldout(g_ceph_context, 0) << "dror: DROR_MGR: DaemonStateIndex::get fetching " << key.type << "." << key.name << dendl;
   std::shared_lock l{lock};
 
   auto iter = all.find(key);

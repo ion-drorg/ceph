@@ -490,7 +490,7 @@ int MgrClient::start_command(vector<string>&& cmd, bufferlist&& inbl,
 			     Context *onfinish)
 {
   std::lock_guard l(lock);
-  ldout(cct, 0) << "dror1: in MgrClient::start_command: " << cmd << dendl;
+  ldout(cct, 0) << "dror: in MgrClient::start_command: " << cmd << dendl;
   ldout(cct, 20) << "cmd: " << cmd << dendl;
 
   if (map.epoch == 0 && mgr_optional) {
@@ -526,7 +526,7 @@ int MgrClient::start_tell_command(
 {
   std::lock_guard l(lock);
 
-  ldout(cct, 0) << "dror1: in MgrClient::start_tell_command: name: " << name << " cmd: " << cmd << dendl;
+  ldout(cct, 0) << "dror: in MgrClient::start_tell_command: name: " << name << " cmd: " << cmd << dendl;
   ldout(cct, 20) << "target: " << name << " cmd: " << cmd << dendl;
 
   if (map.epoch == 0 && mgr_optional) {
